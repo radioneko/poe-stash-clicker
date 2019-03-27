@@ -9,9 +9,13 @@
 #ce ----------------------------------------------------------------------------
 
 ; Script Start - Add your code below here
+#include "util.au3"
+#include <GUIConstantsEx.au3>
 
-;WinActivate("[#] RF Online [#]")
 $wcl = "[TITLE:Path of Exile; CLASS:POEWindowClass]"
+$gui_title = "P4th 0f Tr4d1ng"
+$gui_class = "[TITLE:" & $gui_title & "; CLASS:AutoIt v3 GUI]"
+WinClose($gui_class)
 WinActivate($wcl)
 WinWaitActive($wcl)
 
@@ -33,6 +37,19 @@ Global _
 	$stash_qcell = 29, _
 	$stash_cell = $stash_qcell * 2
 
+Enum $TAB_CURRENCY = 0, _
+	$TAB_MAPS = 1, _
+	$TAB_DIVINATION = 2, _
+	$TAB_CHAOS = 3, _
+	$TAB_ESSENSE = 5, _
+	$TAB_FRAGMENTS = 16, _
+	$TAB_RESONATORS = 23 - 2, _
+	$TAB_FOSSILS = 12
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;     "STRUCTURES"     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+Enum $ITEM_is_valid = 0, $ITEM_rarity = 1, $ITEM_is_undefined = 2, $ITEM_sockets = 3, $ITEM_base = 4, $ITEM_quality = 5
 
 Func SplitNL($text) ;{{{
 	Return StringSplit(StringReplace($text, Chr(13), ""), Chr(10))
@@ -69,13 +86,20 @@ Func ItemMove($srcX, $srcY, $dstX, $dstY);{{{
 	Sleep(50)
 EndFunc;}}}
 
-Func CtrlClick() ;{{{
+Func CtrlClick($x, $y) ;{{{
 	Send("{CTRLDOWN}")
 	Sleep(10)
+	MouseMove($x, $y, 0)
+	Sleep(20)
 	MouseClick("left")
 	Sleep(10)
 	Send("{CTRLUP}")
+	Sleep(10)
 EndFunc ;}}}
+
+Func InventoryCtrlClick($row, $col);{{{
+	CtrlClick(InventoryX($col) + 8, InventoryY($row) + 8)
+EndFunc;}}}
 
 Func OpenTab($no) ;{{{
 	MouseMove($tablist_button_x, $tablist_button_y, 0)
@@ -85,10 +109,11 @@ Func OpenTab($no) ;{{{
 	MouseMove($tablist_menu_x, $tablist_button_y + $no * $tablist_item_height, 0)
 	Sleep(50)
 	MouseClick("left")
-	Sleep(500)
+	Sleep(300)
 EndFunc ;}}};}}}
 
-Global Enum $I_NONE, $I_HELMET, $I_BODY, $I_GLOVES, $I_BELT, $I_BOOTS, $I_WEAPON_2H, $I_WEAPON_1H, $I_RING, $I_AMULET, $I_OTHER
+Global Enum $I_NONE, $I_HELMET, $I_BODY, $I_GLOVES, $I_BELT, $I_BOOTS, $I_WEAPON_2H, $I_WEAPON_1H, $I_RING, $I_AMULET, _
+	$I_CURRENCY, $I_MAP, $I_DIVINATION, $I_FRAGMENT, $I_FOSSIL, $I_RESONATOR, $I_OTHER
 
 Func Tuple3($a1, $a2, $a3) ;{{{
 	Local $r[3] = [$a1, $a2, $a3]
@@ -112,7 +137,8 @@ Enum $ICLASS_class = 0, $ICLASS_height = 1, $ICLASS_width = 2
 ; 0 => item class
 ; 1 => item height
 ; 2 => item width
-Func DescribeBaseItem($desc) ;{{{
+Func DescribeBaseItem(ByRef $info) ;{{{
+	Local $desc = $info[$ITEM_base]
 	Local $text
 	If StringLeft($desc, 9) == "Superior " Then
 		$text = StringMid($desc, 10)
@@ -122,6 +148,43 @@ Func DescribeBaseItem($desc) ;{{{
 	Local $words = StringSplit($text, " ")
 	Local $w = $words[$words[0]]
 	ConsoleWrite("Checking '" & $text & "'..." & @LF)
+
+	; Fragments: atziri etc {{{
+	; Fragments MUST be checked before currency because splinters have rarity currency
+	If StringLeft($text, 13) == "Sacrifice at " or _
+	   StringLeft($text, 12) == "Splinter of " or _
+	   $text == " Offering to the Goddess" _
+	Then
+		Return Tuple3($I_FRAGMENT, 1, 1)
+	EndIf
+	If $text == "Divine Vessel" Then
+		Return Tuple3($I_FRAGMENT, 2, 1)
+	EndIf
+	; }}}
+	; Delve stuff {{{
+	If $w == "Resonator" Then
+		If $words[1] == "Primitive" Then
+			Return Tuple3($I_RESONATOR, 1, 1)
+		ElseIf $words[1] == "Potent" Then
+			Return Tuple3($I_RESONATOR, 2, 1)
+		Else
+			Return Tuple3($I_RESONATOR, 2, 2)
+		EndIf
+	EndIf
+	If $w == "Fossil" Then
+		Return Tuple3($I_FOSSIL, 1, 1)
+	EndIf
+	;}}}
+
+	If $w == "Map" Then
+		Return Tuple3($I_MAP, 1, 1)
+	EndIf
+	If $info[$ITEM_rarity] == "Currency" Then
+		Return Tuple3($I_CURRENCY, 1, 1)
+	EndIf
+	If $info[$ITEM_rarity] == "Divination Card" Then
+		Return Tuple3($I_DIVINATION, 1, 1)
+	EndIf
 
 	; Helmets
 	Local $all_helmets[15] = [ "Hat", "Helmet", "Burgonet" _
@@ -177,7 +240,7 @@ Func DescribeBaseItem($desc) ;{{{
 	EndIf
 
 	; Cool one-handed 3x1 weapons
-	Local $w1h_3x1[51] = [ "Glass Shank", "Skinning Knife", _ ;{{{
+	Local $w1h_3x1[57] = [ "Glass Shank", "Skinning Knife", _ ;{{{
 		"Carving Knife", "Stiletto", "Boot Knife", "Copper Kris", _
 		"Skean", "Imp Dagger", "Flaying Knife", "Prong Dagger", _
 		"Butcher Knife", "Poignard", "Boot Blade", "Golden Kris", _
@@ -283,16 +346,6 @@ Func MakeArea($rows, $cols, $value);{{{
 EndFunc;}}}
 
 
-Func GetItemDescI($row, $col) ;{{{
-	MouseMove(InventoryX($col), InventoryY($row), 0)
-	ClipPut("")
-	Sleep(15)
-	Send("^c")
-	Sleep(15)
-	Return ClipGet()
-EndFunc ;}}}
-
-Enum $ITEM_is_valid = 0, $ITEM_rarity = 1, $ITEM_is_undefined = 2, $ITEM_sockets = 3, $ITEM_base = 4
 ; Try to parse item info into array
 ; 0 => is_valid
 ; 1 => rarity
@@ -342,9 +395,9 @@ EndFunc;}}}
 Func ProbeItem($x, $y) ;{{{
 	ClipPut("")
 	MouseMove($x, $y, 1)
-	Sleep(15)
+	Sleep(20)
 	Send("^c")
-	Sleep(15)
+	Sleep(20)
 	$text = ClipGet()
 	;ConsoleWrite("'" & $text & "'" & @LF)	
 	If $text == "" Then
@@ -356,7 +409,7 @@ Func ProbeItem($x, $y) ;{{{
 		Return TItemInfo($I_NONE, 1, 1, 0, 0, False)
 	EndIf
 	; Interpret base class to know dimension and other shit
-	Local $item = DescribeBaseItem($info[$ITEM_base])
+	Local $item = DescribeBaseItem($info)
 	ConsoleWrite("'" & $info[$ITEM_base] & "' => " & $item[$ICLASS_class] & ", sockets = " & $info[$ITEM_sockets] & "rarity = " & $info[$ITEM_rarity] & @LF)
 	Return TItemInfo($item[$ICLASS_class], $item[$ICLASS_height], $item[$ICLASS_width], _
 		$info[$ITEM_sockets], 60, $info[$ITEM_is_undefined] and $info[$ITEM_rarity] == "Rare")
@@ -391,44 +444,6 @@ For $i = 0 to 4
 	Next
 Next
 
-;MouseMove(907, 681, 0)
-;Send("^c")
-
-
-Func Main() ;{{{
-	Sleep(25)
-	For $row = 0 to 4
-		For $col = 0 to 11
-			if $invMap[$row][$col] <> '-' Then
-				ContinueLoop
-			EndIf
-			$d = ParseItemInfo(GetItemDescI($row, $col))
-			If $d[0] == True Then
-				Local $item = DescribeBaseItem($d[4])
-				if $item[0] <> $I_OTHER and PartOfChaosSet($d) Then
-					ConsoleWrite("item = " & $item[0] & @LF)
-					MarkInv($invMap, $row, $col, $item[1], $item[2], '+')
-				EndIf
-				;$invMap[$row][$col] = '+'
-				;ConsoleWrite("(" & $row & "," & $col & ") -> " & $d[4] & Chr(10))
-				If $d[4] == "1Lunaris Circlet" Then
-				EndIf
-			EndIf
-		Next
-	Next
-
-	For $i = 0 to 4
-		For $j = 0 to 11
-			ConsoleWrite($invMap[$i][$j])
-			;If $invMap[$i][$j] == True Then
-			;	ConsoleWrite('*')
-			;Else
-			;	ConsoleWrite('-')
-			;EndIf
-		Next
-		ConsoleWrite(Chr(10))
-	Next
-EndFunc ;}}}
 
 Func Offset1($row, $col);{{{
 	Local $r[1][2] = [[$row, $col]]
@@ -520,28 +535,84 @@ Func MoveChaosSetItem($irow, $icol, $coff, $info); {{{
 	;;Sleep(200)
 EndFunc;}}}
 
+; Issue large number of ctrl-clicks
+Func MassCtrlClick(ByRef $items, $tab, $tab_sleep, $click_sleep);{{{
+	If IsArray($items) Then
+		ConsoleWrite("Processing " & UBound($items) & " entries..." & @LF)
+		OpenTab($tab)
+		Sleep($tab_sleep)
+		;ConsoleWrite("total " & UBound($items) & " currency items found" & @LF)
+		For $i = 0 to UBound($items) - 1
+			$row = TItemRef_row($items[$i])
+			$col = TItemRef_col($items[$i])
+			InventoryCtrlClick($row, $col)
+			Sleep($click_sleep)
+		Next
+	EndIf
+EndFunc;}}}
+
+Func PushIfClass(ByRef $items, $iref, $iclass)
+	Local $item = $iref[2]
+	If $item[$II_CLASS] == $iclass Then
+		ConsoleWrite("Saving..." & @LF)
+		TItemRef_PushRef($items, $iref)
+	EndIf
+EndFunc
 
 Func ProcessInventory();{{{
-	Local $seen = MakeArea(5, 12, False)
+	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, $fossils, $resonators
+	Local $seen = MakeArea(5, 12, False) ; what cells we're aware about
+	Local $i, $item, $row, $col
+	
+	; Look throught inventory for currency, maps, chaos items etc
 	for $row = 0 to 4
 		for $col = 0 to 9 ; Keep last two rows for my stuff
 			if $seen[$row][$col] then
 				ContinueLoop
 			endif
 			$item = InventoryProbe($row, $col)
+			ConsoleWrite("See " & $item[$II_CLASS] & " at " & $row & "," & $col & @LF)
 			if $item[$II_CLASS] == $I_NONE then
 				ContinueLoop
 			endif
 			MarkInv($seen, $row, $col, $item[$II_HEIGHT], $item[$II_WIDTH], True)
 			ConsoleWrite("Seen " & $item[$II_CLASS] & " @ " & $row & "," & $col & ", " & $item[$II_HEIGHT] & "x" & $item[$II_WIDTH] & @LF)
+			Local $iref = TItemRef($row, $col, $item)
 			If $item[$II_CHAOS] Then
-				$off = CalcOffset($item[$II_CLASS], $item[$II_HEIGHT], $item[$II_WIDTH])
-				If IsArray($off) Then
-					MoveChaosSetItem($row, $col, $off, $item)
-				EndIf
+				TItemRef_Push($chaosItems, $row, $col, $item)
 			EndIf
+			PushIfClass($currencyItems, $iref, $I_CURRENCY)
+			PushIfClass($divinationItems, $iref, $I_DIVINATION)
+			PushIfClass($mapItems, $iref, $I_MAP)
+			PushIfClass($fragmentItems, $iref, $I_FRAGMENT)
+			PushIfClass($fossils, $iref, $I_FOSSIL)
+			PushIfClass($resonators, $iref, $I_RESONATOR)
 		next
 	next
+
+	; Process seeen items
+	If IsArray($chaosItems) Then
+		OpenTab($TAB_CHAOS)
+		Sleep(500)
+		ConsoleWrite("total " & UBound($chaosItems) & " chaos items found" & @LF)
+		For $i = 0 to UBound($chaosItems) - 1
+			$row = TItemRef_row($chaosItems[$i])
+			$col = TItemRef_col($chaosItems[$i])
+			$item = TItemRef_item($chaosItems[$i])
+			Local $off = CalcOffset($item[$II_CLASS], $item[$II_HEIGHT], $item[$II_WIDTH])
+			If IsArray($off) Then
+				MoveChaosSetItem($row, $col, $off, $item)
+			EndIf
+		Next
+	EndIf
+
+	; Currency
+	MassCtrlClick($currencyItems, $TAB_CURRENCY, 500, 50)
+	MassCtrlClick($divinationItems, $TAB_DIVINATION, 500, 100)
+	MassCtrlClick($mapItems, $TAB_MAPS, 500, 800)
+	MassCtrlClick($fragmentItems, $TAB_FRAGMENTS, 500, 100)
+	MassCtrlClick($fossils, $TAB_FOSSILS, 500, 50)
+	MassCtrlClick($resonators, $TAB_RESONATORS, 500, 50)
 EndFunc;}}}
 
 ;OpenTab(3)
@@ -567,8 +638,39 @@ EndFunc;}}}
 ;	ConsoleWrite(Floor(5 / 4) & @LF)
 ;EndIf
 
-OpenTab(3)
-ProcessInventory()
+Func StopScript()
+	WinActivate("[CLASS:Vim]")
+	Exit(0)
+EndFunc
+
+Func RestartScript()
+	Local $editor = "[CLASS:SciTEWindow]"
+	WinActivate($editor)
+	Exit(5)
+EndFunc
+
+Func hk_ProcessInventory()
+	If WinActivate($wcl) Then
+		ProcessInventory()
+	EndIf
+EndFunc
+
+Func Daemonize()
+	HotKeySet("^{NUMPAD1}", "hk_ProcessInventory")
+	HotKeySet("^{NUMPAD0}", "StopScript")
+	HotKeySet("^{NUMPADDOT}", "RestartScript")
+
+	GUICreate($gui_title, 200, 100)
+	GUISetState(@SW_HIDE)
+	Do
+		$msg = GUIGetMsg()
+	Until $msg = $GUI_EVENT_CLOSE
+EndFunc
+
+;ProcessInventory()
+Daemonize()
+;_ArrayAdd($x, 1)
+;ArrayDisplay($x)
 
 ;MouseClick("left", 1263, 676, 1, 0)
 ;Sleep(500)
