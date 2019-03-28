@@ -41,10 +41,11 @@ Enum $TAB_CURRENCY = 0, _
 	$TAB_MAPS = 1, _
 	$TAB_DIVINATION = 2, _
 	$TAB_CHAOS = 3, _
-	$TAB_ESSENSE = 5, _
+	$TAB_ESSENCE = 5, _
 	$TAB_FRAGMENTS = 16, _
 	$TAB_RESONATORS = 23 - 2, _
-	$TAB_FOSSILS = 12
+	$TAB_FOSSILS = 12, _
+	$TAB_GEMS = 11
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;     "STRUCTURES"     ;;
@@ -113,7 +114,7 @@ Func OpenTab($no) ;{{{
 EndFunc ;}}};}}}
 
 Global Enum $I_NONE, $I_HELMET, $I_BODY, $I_GLOVES, $I_BELT, $I_BOOTS, $I_WEAPON_2H, $I_WEAPON_1H, $I_RING, $I_AMULET, _
-	$I_CURRENCY, $I_MAP, $I_DIVINATION, $I_FRAGMENT, $I_FOSSIL, $I_RESONATOR, $I_OTHER
+	$I_CURRENCY, $I_MAP, $I_DIVINATION, $I_FRAGMENT, $I_FOSSIL, $I_RESONATOR, $I_ESSENCE, $I_GEM, $I_OTHER
 
 Func Tuple3($a1, $a2, $a3) ;{{{
 	Local $r[3] = [$a1, $a2, $a3]
@@ -131,6 +132,15 @@ Func Lookup($needle, ByRef $haystack) ;{{{
 	Next
 	Return False
 EndFunc ;}}}
+
+
+Func ClassifyCurrency(ByRef $info, $base, $words);{{{
+	ConsoleWrite(">>> " & $base & StringRegExp($base, ".*Essence of.*") & @LF)
+	If UBound($words) > 1 and (StringRegExp($base, "Essence of") == 1 or $base == "Remnant of Corruption") Then
+		Return Tuple3($I_ESSENCE, 1, 1)
+	EndIf
+	Return Tuple3($I_CURRENCY, 1, 1)
+EndFunc;}}}
 
 Enum $ICLASS_class = 0, $ICLASS_height = 1, $ICLASS_width = 2
 ; Item info from base type
@@ -153,7 +163,7 @@ Func DescribeBaseItem(ByRef $info) ;{{{
 	; Fragments MUST be checked before currency because splinters have rarity currency
 	If StringLeft($text, 13) == "Sacrifice at " or _
 	   StringLeft($text, 12) == "Splinter of " or _
-	   $text == " Offering to the Goddess" _
+	   $text == "Offering to the Goddess" _
 	Then
 		Return Tuple3($I_FRAGMENT, 1, 1)
 	EndIf
@@ -180,10 +190,13 @@ Func DescribeBaseItem(ByRef $info) ;{{{
 		Return Tuple3($I_MAP, 1, 1)
 	EndIf
 	If $info[$ITEM_rarity] == "Currency" Then
-		Return Tuple3($I_CURRENCY, 1, 1)
+		Return ClassifyCurrency($info, $text, $words)
 	EndIf
 	If $info[$ITEM_rarity] == "Divination Card" Then
 		Return Tuple3($I_DIVINATION, 1, 1)
+	EndIf
+	if $info[$ITEM_rarity] == "Gem" Then
+		Return Tuple3($I_GEM, 1, 1)
 	EndIf
 
 	; Helmets
@@ -351,7 +364,8 @@ EndFunc;}}}
 ; 1 => rarity
 ; 2 => is_unidentified
 ; 3 => sockets
-; 4 => item_base)
+; 4 => item_base
+; 5 => quality
 Func ParseItemInfo($desc) ;{{{
 	Local $s = SplitNL($desc)
 	
@@ -360,7 +374,7 @@ Func ParseItemInfo($desc) ;{{{
 		Return $r
 	EndIf
 	
-	Local $i = 1, $rty = "", $item = "", $is_unidentified = False, $sockets = 0
+	Local $i = 1, $rty = "", $item = "", $is_unidentified = False, $sockets = 0, $quality = 0
 	For $i = 1 to $s[0]
 		If StringLeft($s[$i], 8) == "Rarity: " Then
 			$rty = StringMid($s[$i], 9)
@@ -373,6 +387,8 @@ Func ParseItemInfo($desc) ;{{{
 		If StringLeft($s[$i], 9) == "Sockets: " Then
 			Local $skt = StringMid($s[$i], 10)
 			$sockets = StringLen($skt) / 2
+		ElseIf StringLeft($s[$i], 9) == "Quality: " Then
+			$quality = Int(StringMid($s[$i], 10))
 		EndIf
 		; Line before first separator is item base name
 		If $s[$i] == "--------" and $item == "" Then
@@ -380,13 +396,13 @@ Func ParseItemInfo($desc) ;{{{
 		EndIf
 	Next
 	
-	Local $r[5] = [True, $rty, $is_unidentified, $sockets, $item]
+	Local $r[6] = [True, $rty, $is_unidentified, $sockets, $item, $quality]
 	Return $r
 EndFunc ;}}}
 
-Enum $II_CLASS = 0, $II_HEIGHT = 1, $II_WIDTH = 2, $II_SOCKETS = 3, $II_LVL = 4, $II_CHAOS = 5
-Func TItemInfo($iclass, $height, $width, $sockets, $ilvl, $chaos);{{{
-	Local $r[6] = [$iclass, $height, $width, $sockets, $ilvl, $chaos]
+Enum $II_CLASS = 0, $II_HEIGHT = 1, $II_WIDTH = 2, $II_SOCKETS = 3, $II_LVL = 4, $II_CHAOS = 5, $II_QUALITY = 6, $II_BASE = 7
+Func TItemInfo($iclass, $height, $width, $sockets, $ilvl, $chaos, $quality, $base = "--");{{{
+	Local $r[8] = [$iclass, $height, $width, $sockets, $ilvl, $chaos, $quality, $base]
 	return $r
 EndFunc;}}}
 
@@ -401,18 +417,19 @@ Func ProbeItem($x, $y) ;{{{
 	$text = ClipGet()
 	;ConsoleWrite("'" & $text & "'" & @LF)	
 	If $text == "" Then
-		Return TItemInfo($I_NONE, 1, 1, 0, 0, False)
+		Return TItemInfo($I_NONE, 1, 1, 0, 0, False, 0)
 	EndIf
 	; Now parse description
 	$info = ParseItemInfo($text)
 	If $info[$ITEM_is_valid] == False Then
-		Return TItemInfo($I_NONE, 1, 1, 0, 0, False)
+		Return TItemInfo($I_NONE, 1, 1, 0, 0, False, 0)
 	EndIf
 	; Interpret base class to know dimension and other shit
 	Local $item = DescribeBaseItem($info)
-	ConsoleWrite("'" & $info[$ITEM_base] & "' => " & $item[$ICLASS_class] & ", sockets = " & $info[$ITEM_sockets] & "rarity = " & $info[$ITEM_rarity] & @LF)
+	;ConsoleWrite("'" & $info[$ITEM_base] & "' => " & $item[$ICLASS_class] & ", sockets = " & $info[$ITEM_sockets] & "rarity = " & $info[$ITEM_rarity] & @LF)
 	Return TItemInfo($item[$ICLASS_class], $item[$ICLASS_height], $item[$ICLASS_width], _
-		$info[$ITEM_sockets], 60, $info[$ITEM_is_undefined] and $info[$ITEM_rarity] == "Rare")
+		$info[$ITEM_sockets], 60, $info[$ITEM_is_undefined] and $info[$ITEM_rarity] == "Rare", _
+		$info[$ITEM_quality], $info[$ITEM_base])
 EndFunc ;}}}
 
 
@@ -517,9 +534,15 @@ Func MoveChaosSetItem($irow, $icol, $coff, $info); {{{
 		; try to fallback to second position
 		if $what <> "" and $what == $mark and UBound($coff) > 1 then
 			ConsoleWrite("Trying next index " & UBound($coff) & @LF)
-			$row = $base_row + $coff[1][0]
-			$col = $base_col + $coff[1][1]
-			$what = QLook($row, $col, $mark)
+			Local $k
+			For $k = 1 to UBound($coff) - 1
+				$row = $base_row + $coff[$k][0]
+				$col = $base_col + $coff[$k][1]
+				$what = QLook($row, $col, $mark)
+				if $what == "" Then
+					ExitLoop
+				EndIf
+			Next
 		endif
 		if $what == "" then
 			ConsoleWrite("   -> " & $row & "," & $col & @LF)
@@ -551,16 +574,16 @@ Func MassCtrlClick(ByRef $items, $tab, $tab_sleep, $click_sleep);{{{
 	EndIf
 EndFunc;}}}
 
-Func PushIfClass(ByRef $items, $iref, $iclass)
+Func PushIfClass(ByRef $items, $iref, $iclass, $min_quality = 0)
 	Local $item = $iref[2]
-	If $item[$II_CLASS] == $iclass Then
+	If $item[$II_CLASS] == $iclass and $item[$II_QUALITY] >= $min_quality Then
 		ConsoleWrite("Saving..." & @LF)
 		TItemRef_PushRef($items, $iref)
 	EndIf
 EndFunc
 
 Func ProcessInventory();{{{
-	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, $fossils, $resonators
+	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, $fossils, $resonators, $essenses, $gems, $bizsha
 	Local $seen = MakeArea(5, 12, False) ; what cells we're aware about
 	Local $i, $item, $row, $col
 	
@@ -571,12 +594,20 @@ Func ProcessInventory();{{{
 				ContinueLoop
 			endif
 			$item = InventoryProbe($row, $col)
-			ConsoleWrite("See " & $item[$II_CLASS] & " at " & $row & "," & $col & @LF)
+			;ConsoleWrite("See " & $item[$II_CLASS] & " at " & $row & "," & $col & @LF)
 			if $item[$II_CLASS] == $I_NONE then
 				ContinueLoop
 			endif
 			MarkInv($seen, $row, $col, $item[$II_HEIGHT], $item[$II_WIDTH], True)
-			ConsoleWrite("Seen " & $item[$II_CLASS] & " @ " & $row & "," & $col & ", " & $item[$II_HEIGHT] & "x" & $item[$II_WIDTH] & @LF)
+			Local $item_class_dbg = $item[$II_CLASS]
+			Switch $item[$II_CLASS]
+				Case $I_NONE
+					$item_class_dbg = "EMPTY"
+				Case $I_OTHER
+					$item_class_dbg = "???"
+			EndSwitch
+			ConsoleWrite("Seen '" & $item[$II_BASE] & "' as " & $item_class_dbg & " @ " & $row & "," & $col & ", " & $item[$II_HEIGHT] & "x" & $item[$II_WIDTH]  & _
+				" is_chaos = " & $item[$II_CHAOS] & @LF)
 			Local $iref = TItemRef($row, $col, $item)
 			If $item[$II_CHAOS] Then
 				TItemRef_Push($chaosItems, $row, $col, $item)
@@ -587,6 +618,8 @@ Func ProcessInventory();{{{
 			PushIfClass($fragmentItems, $iref, $I_FRAGMENT)
 			PushIfClass($fossils, $iref, $I_FOSSIL)
 			PushIfClass($resonators, $iref, $I_RESONATOR)
+			PushIfClass($essenses, $iref, $I_ESSENCE)
+			PushIfClass($gems, $iref, $I_GEM, 1)
 		next
 	next
 
@@ -613,6 +646,8 @@ Func ProcessInventory();{{{
 	MassCtrlClick($fragmentItems, $TAB_FRAGMENTS, 500, 100)
 	MassCtrlClick($fossils, $TAB_FOSSILS, 500, 50)
 	MassCtrlClick($resonators, $TAB_RESONATORS, 500, 50)
+	MassCtrlClick($essenses, $TAB_ESSENCE, 500, 50)
+	MassCtrlClick($gems, $TAB_GEMS, 500, 50)
 EndFunc;}}}
 
 ;OpenTab(3)
@@ -643,6 +678,10 @@ Func StopScript()
 	Exit(0)
 EndFunc
 
+ConsoleWrite("OTHER => " & $I_OTHER & @LF)
+;ProcessInventory()
+;Exit(0)
+
 Func RestartScript()
 	Local $editor = "[CLASS:SciTEWindow]"
 	WinActivate($editor)
@@ -667,7 +706,6 @@ Func Daemonize()
 	Until $msg = $GUI_EVENT_CLOSE
 EndFunc
 
-;ProcessInventory()
 Daemonize()
 ;_ArrayAdd($x, 1)
 ;ArrayDisplay($x)
