@@ -50,7 +50,6 @@ Enum $TAB_CURRENCY = 0, _
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;     "STRUCTURES"     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
-Enum $ITEM_is_valid = 0, $ITEM_rarity = 1, $ITEM_is_undefined = 2, $ITEM_sockets = 3, $ITEM_base = 4, $ITEM_quality = 5
 
 Func SplitNL($text) ;{{{
 	Return StringSplit(StringReplace($text, Chr(13), ""), Chr(10))
@@ -72,6 +71,9 @@ EndFunc ;}}}
 Func QtabY($row) ;{{{
 	return $row / 24 * ($stash_bottom_y - $stash_top_y) + $stash_top_y
 EndFunc ;}}}
+
+#include "items.au3"
+#include "qtab.au3"
 
 ; Move item from one location to another
 Func ItemMove($srcX, $srcY, $dstX, $dstY);{{{
@@ -113,9 +115,6 @@ Func OpenTab($no) ;{{{
 	Sleep(300)
 EndFunc ;}}};}}}
 
-Global Enum $I_NONE, $I_HELMET, $I_BODY, $I_GLOVES, $I_BELT, $I_BOOTS, $I_WEAPON_2H, $I_WEAPON_1H, $I_RING, $I_AMULET, _
-	$I_CURRENCY, $I_MAP, $I_DIVINATION, $I_FRAGMENT, $I_FOSSIL, $I_RESONATOR, $I_ESSENCE, $I_GEM, $I_OTHER
-
 Func Tuple3($a1, $a2, $a3) ;{{{
 	Local $r[3] = [$a1, $a2, $a3]
 	Return $r
@@ -142,202 +141,6 @@ Func ClassifyCurrency(ByRef $info, $base, $words);{{{
 	Return Tuple3($I_CURRENCY, 1, 1)
 EndFunc;}}}
 
-Enum $ICLASS_class = 0, $ICLASS_height = 1, $ICLASS_width = 2
-; Item info from base type
-; 0 => item class
-; 1 => item height
-; 2 => item width
-Func DescribeBaseItem(ByRef $info) ;{{{
-	Local $desc = $info[$ITEM_base]
-	Local $text
-	If StringLeft($desc, 9) == "Superior " Then
-		$text = StringMid($desc, 10)
-	Else
-		$text = $desc
-	EndIf
-	Local $words = StringSplit($text, " ")
-	Local $w = $words[$words[0]]
-	ConsoleWrite("Checking '" & $text & "'..." & @LF)
-
-	; Fragments: atziri etc {{{
-	; Fragments MUST be checked before currency because splinters have rarity currency
-	If StringLeft($text, 13) == "Sacrifice at " or _
-	   StringLeft($text, 12) == "Splinter of " or _
-	   $text == "Offering to the Goddess" _
-	Then
-		Return Tuple3($I_FRAGMENT, 1, 1)
-	EndIf
-	If $text == "Divine Vessel" Then
-		Return Tuple3($I_FRAGMENT, 2, 1)
-	EndIf
-	; }}}
-	; Delve stuff {{{
-	If $w == "Resonator" Then
-		If $words[1] == "Primitive" Then
-			Return Tuple3($I_RESONATOR, 1, 1)
-		ElseIf $words[1] == "Potent" Then
-			Return Tuple3($I_RESONATOR, 2, 1)
-		Else
-			Return Tuple3($I_RESONATOR, 2, 2)
-		EndIf
-	EndIf
-	If $w == "Fossil" Then
-		Return Tuple3($I_FOSSIL, 1, 1)
-	EndIf
-	;}}}
-
-	If $w == "Map" Then
-		Return Tuple3($I_MAP, 1, 1)
-	EndIf
-	If $info[$ITEM_rarity] == "Currency" Then
-		Return ClassifyCurrency($info, $text, $words)
-	EndIf
-	If $info[$ITEM_rarity] == "Divination Card" Then
-		Return Tuple3($I_DIVINATION, 1, 1)
-	EndIf
-	if $info[$ITEM_rarity] == "Gem" Then
-		Return Tuple3($I_GEM, 1, 1)
-	EndIf
-
-	; Helmets
-	Local $all_helmets[15] = [ "Hat", "Helmet", "Burgonet" _
-	, "Cap", "Tricorne", "Hood", "Pelt" _
-	, "Circlet", "Cage" _
-	, "Helm", "Sallet", "Bascinet" _
-	, "Coif", "Crown" _
-	, "Mask"]
-	If Lookup($w, $all_helmets) == True Then
-		Return Tuple3($I_HELMET, 2, 2)
-	EndIf
-	
-	; Body armor
-	Local $all_bodies[24] = [ _
-		"Vest", "Chestplate", "Plate", _
-		"Jerkin", "Leather", "Tunic", "Garb", _
-		"Robe", "Vestment", "Regalia", "Wrap", "Silks", _
-		"Brigandine", "Doublet", "Armour", "Lamellar", "Wyrmscale", "Dragonscale", _
-		"Coat", "Ringmail", "Chainmail", "Hauberk", _
-		"Jacket", "Raiment"]
-	If Lookup($w, $all_bodies) == True Then
-		Return Tuple3($I_BODY, 3, 2)
-	EndIf
-	
-	; Gloves
-	Local $all_gloves[3] = [ "Gauntlets", "Gloves", "Mitts"]
-	If Lookup($w, $all_gloves) == True Then
-		Return Tuple3($I_GLOVES, 2, 2)
-	EndIf
-	
-	; Belts
-	Local $belts[3] = ["Belt", "Vise", "Sash"]
-	If Lookup($w, $belts) == True Then
-		Return Tuple3($I_BELT, 1, 2)
-	EndIf
-
-	; Boots
-	Local $all_boots[4] = ["Greaves", "Boots", "Shoes", "Slippers"]
-	If Lookup($w, $all_boots) == True Then
-		Return Tuple3($I_BOOTS, 2, 2)
-	EndIf
-	
-	; Rings
-	Local $rings[2] = ["Ring", "Hoop"]
-	If Lookup($w, $rings) == True Then
-		Return Tuple3($I_RING, 1, 1)
-	EndIf
-	
-	; Amultes
-	Local $amulets[1] = ["Amulet"]
-	If Lookup($w, $amulets) == True Then
-		Return Tuple3($I_AMULET, 1, 1)
-	EndIf
-
-	; Cool one-handed 3x1 weapons
-	Local $w1h_3x1[57] = [ "Glass Shank", "Skinning Knife", _ ;{{{
-		"Carving Knife", "Stiletto", "Boot Knife", "Copper Kris", _
-		"Skean", "Imp Dagger", "Flaying Knife", "Prong Dagger", _
-		"Butcher Knife", "Poignard", "Boot Blade", "Golden Kris", _
-		"Royal Skean", "Fiend Dagger", "Trisula", "Gutting Knife", _
-		"Slaughter Knife", "Ambusher", "Ezomyte Dagger", "Platinum Kris", _
-		"Imperial Skean", "Demon Dagger", "Sai", _ ;}}}
-		"Driftwood Wand", "Goat's Horn", "Carved Wand", "Quartz Wand", _ ;{{{
-		"Spiraled Wand", "Sage Wand", "Pagan Wand", "Faun's Horn", _
-		"Engraved Wand", "Crystal Wand", "Serpent Wand", "Omen Wand", _
-		"Heathen Wand", "Demon's Horn", "Imbued Wand", "Opal Wand", _
-		"Tornado Wand", "Prophecy Wand", "Profane Wand", _;}}}
-		"Sabre", "Copper Sword", "Variscite Blade", "Cutlass", _;{{{
-		"Gemstone Sword", "Corsair Sword", _
-		"Driftwood Club", "Tribal Club", "Spiked Club", "Petrified Club", _ ; Handmade list of 3x1 maces
-		"Barbed Club", "Ancestral Club", "Tenderizer"] ;}}}
-	If Lookup($text, $w1h_3x1) == True Then
-		Return Tuple3($I_WEAPON_1H, 3, 1)
-	EndIf
-	; One-handed 2x2 stuff which is viable for trading purposes (claws, some shields)
-	Local $w1h_2x2[70] = [ "Nailed Fist", "Sharktooth Claw", "Awl", _ ;{{{
-		"Cat's Paw", "Blinder", "Timeworn Claw", "Sparkling Claw", _
-		"Fright Claw", "Double Claw", "Thresher Claw", "Gouger", _
-		"Tiger's Paw", "Gut Ripper", "Prehistoric Claw", "Noble Claw", _
-		"Eagle Claw", "Twin Claw", "Great White Claw", "Throat Stabber", _
-		"Hellion's Paw", "Eye Gouger", "Vaal Claw", "Imperial Claw", _
-		"Terror Claw", "Gemini Claw", _;}}}
-		"Goathide Buckler", "Pine Buckler", "Painted Buckler", "Hammered Buckler", _;{{{
-		"War Buckler", "Gilded Buckler", "Oak Buckler", "Enameled Buckler", _
-		"Corrugated Buckler", "Battle Buckler", "Golden Buckler", "Ironwood Buckler", _
-		"Lacquered Buckler", "Vaal Buckler", "Crusader Buckler", "Imperial Buckler", _
-		"Twig Spirit Shield", "Yew Spirit Shield", "Bone Spirit Shield", "Tarnished Spirit Shield", _
-		"Jingling Spirit Shield", "Brass Spirit Shield", "Walnut Spirit Shield", "Ivory Spirit Shield", _
-		"Ancient Spirit Shield", "Chiming Spirit Shield", "Thorium Spirit Shield", "Lacewood Spirit Shield", _
-		"Fossilised Spirit Shield", "Vaal Spirit Shield", "Harmonic Spirit Shield", "Titanium Spirit Shield", _
-		"Spiked Bundle", "Driftwood Spiked Shield", "Alloyed Spiked Shield", "Burnished Spiked Shield", _
-		"Ornate Spiked Shield", "Redwood Spiked Shield", "Compound Spiked Shield", "Polished Spiked Shield", _
-		"Sovereign Spiked Shield", "Alder Spiked Shield", "Ezomyte Spiked Shield", "Mirrored Spiked Shield", _
-		"Supreme Spiked Shield"] ;}}}
-	If Lookup($text, $w1h_2x2) == True Then
-		Return Tuple3($I_WEAPON_1H, 2, 2)
-	EndIf
-
-	; Two-handed weapons
-	Local $w2h_4x2[109] = [ "Stone Axe", "Jade Chopper", "Woodsplitter", "Poleaxe", "Double Axe", _ ;{{{
-		"Gilded Axe", "Shadow Axe", "Dagger Axe", "Jasper Chopper", "Timber Axe", _
-		"Headsman Axe", "Labrys", "Noble Axe", "Abyssal Axe", "Karui Chopper", _
-		"Talon Axe", "Sundering Axe", "Ezomyte Axe", "Vaal Axe", "Despot Axe", _
-		"Void Axe", "Fleshripper", _;}}}
-		"Corroded Blade", "Longsword", "Bastard Sword", "Two-Handed Sword", _ ; {{{
-		"Etched Greatsword", "Ornate Sword", "Spectral Sword", "Curved Blade", _
-		"Butcher Sword", "Footman Sword", "Highland Blade", "Engraved Greatsword", _
-		"Tiger Sword", "Wraith Sword", "Lithe Blade", "Headman's Sword", _
-		"Reaver Sword", "Ezomyte Blade", "Vaal Greatsword", "Lion Sword", _
-		"Infernal Sword", "Exquisite Blade", _ ;}}}
-		"Driftwood Maul", "Tribal Maul", "Mallet", "Sledgehammer", _ ;{{{
-		"Jagged Maul", "Brass Maul", "Fright Maul", "Morning Star", _
-		"Totemic Maul", "Great Mallet", "Steelhead", "Spiny Maul", _
-		"Plated Maul", "Dread Maul", "Solar Maul", "Karui Maul", _
-		"Colossus Mallet", "Piledriver", "Meatgrinder", "Imperial Maul", _
-		"Terror Maul", "Coronal Maul", _ ;}}}
-		"Gnarled Branch", "Primitive Staff", "Long Staff", "Iron Staff", _ ;{{{
-		"Coiled Staff", "Royal Staff", "Vile Staff", "Crescent Staff", _
-		"Woodful Staff", "Quarterstaff", "Military Staff", "Serpentine Staff", _
-		"Highborn Staff", "Foul Staff", "Moon Staff", "Primordial Staff", _
-		"Lathi", "Ezomyte Staff", "Maelstrom Staff", "Imperial Staff", _
-		"Judgement Staff", "Eclipse Staff", _ ;}}}
-		"Long Bow", "Composite Bow", "Recurve Bow", "Bone Bow", _ ;{{{
-		"Royal Bow", "Death Bow", "Reflex Bow", "Decurve Bow", _
-		"Compound Bow", "Sniper Bow", "Ivory Bow", "Highborn Bow", _
-		"Decimation Bow", "Steelwood Bow", "Citadel Bow", "Ranger Bow", _
-		"Assassin Bow", "Spine Bow", "Imperial Bow", "Harbinger Bow", _
-		"Maraketh Bow"];}}}
-	If Lookup($text, $w2h_4x2) == True Then
-		Return Tuple3($I_WEAPON_2H, 4, 2)
-	EndIf
-
-	Local $w2h_3x2[4] = [ "Crude Bow", "Short Bow", "Grove Bow", "Thicket Bow" ]
-	If Lookup($text, $w2h_3x2) == True Then
-		Return Tuple3($I_WEAPON_2H, 3, 2)
-	EndIf
-
-	Return Tuple3($I_OTHER, 1, 1)
-EndFunc ;}}}
-
 ; Mark rectangular area in inventory map
 Func MarkInv(ByRef $map, $row, $col, $h, $w, $value) ;{{{
 	Local $i, $j
@@ -359,55 +162,8 @@ Func MakeArea($rows, $cols, $value);{{{
 EndFunc;}}}
 
 
-; Try to parse item info into array
-; 0 => is_valid
-; 1 => rarity
-; 2 => is_unidentified
-; 3 => sockets
-; 4 => item_base
-; 5 => quality
-Func ParseItemInfo($desc) ;{{{
-	Local $s = SplitNL($desc)
-	
-	If $s[0] < 2 Then
-		Local $r[1] = [False]
-		Return $r
-	EndIf
-	
-	Local $i = 1, $rty = "", $item = "", $is_unidentified = False, $sockets = 0, $quality = 0
-	For $i = 1 to $s[0]
-		If StringLeft($s[$i], 8) == "Rarity: " Then
-			$rty = StringMid($s[$i], 9)
-		EndIf
-		; Track unidentified flag
-		If $s[$i] == "Unidentified" Then
-			$is_unidentified = True
-		EndIf
-		; Analyze sockets,
-		If StringLeft($s[$i], 9) == "Sockets: " Then
-			Local $skt = StringMid($s[$i], 10)
-			$sockets = StringLen($skt) / 2
-		ElseIf StringLeft($s[$i], 9) == "Quality: " Then
-			$quality = Int(StringMid($s[$i], 10))
-		EndIf
-		; Line before first separator is item base name
-		If $s[$i] == "--------" and $item == "" Then
-			$item = $s[$i - 1]
-		EndIf
-	Next
-	
-	Local $r[6] = [True, $rty, $is_unidentified, $sockets, $item, $quality]
-	Return $r
-EndFunc ;}}}
-
-Enum $II_CLASS = 0, $II_HEIGHT = 1, $II_WIDTH = 2, $II_SOCKETS = 3, $II_LVL = 4, $II_CHAOS = 5, $II_QUALITY = 6, $II_BASE = 7
-Func TItemInfo($iclass, $height, $width, $sockets, $ilvl, $chaos, $quality, $base = "--");{{{
-	Local $r[8] = [$iclass, $height, $width, $sockets, $ilvl, $chaos, $quality, $base]
-	return $r
-EndFunc;}}}
-
 ; Get raw item description by moving mouse pointer and issuing "Ctrl-C".
-; Item description is parsed
+; Returns II_ (aka TItemInfo)
 Func ProbeItem($x, $y) ;{{{
 	ClipPut("")
 	MouseMove($x, $y, 1)
@@ -438,17 +194,6 @@ Func InventoryProbe($row, $col);{{{
 	Return ProbeItem(InventoryX($col) + 8, InventoryY($row) + 8)
 EndFunc;}}}
 
-; Convenience wrapper to probe item in quad stash tab
-Func QtabProbe($row, $col);{{{
-	Return ProbeItem(QtabX($col) + 8, QtabY($row) + 8)
-EndFunc;}}}
-
-; Convenience wrapper to move items between stash and Qtab
-Func Inventory2Qtab($iRow, $iCol, $qRow, $qCol, $h, $w);{{{
-	ConsoleWrite("Move " & $iRow & "," & $iCol & " -> " & $qRow & "," & $qCol & "(" & $h & "x" & $w & @LF)
-	ItemMove((InventoryX($iCol) + InventoryX($iCol + $w)) / 2, (InventoryY($iRow) + InventoryY($iRow + $h)) / 2, (QtabX($qCol) + QtabX($qCol + $w)) / 2, (QtabY($qRow) + QtabY($qRow + $h)) / 2)
-EndFunc;}}}
-
 Func PartOfChaosSet(ByRef $item) ;{{{
 	ConsoleWrite("item: " & $item[1] & "; " & $item[2] & "; " & $item[3] & @LF)
 	Return $item[1] == "Rare" and $item[3] <> 6 and $item[2] == True
@@ -462,100 +207,95 @@ For $i = 0 to 4
 Next
 
 
+Func Pair($a, $b);{{{
+	Local $r[2] = [$a, $b]
+	Return $r
+EndFunc;}}}
+
 Func Offset1($row, $col);{{{
-	Local $r[1][2] = [[$row, $col]]
+	Local $r[1] = [Pair($row, $col)]
 	Return $r
 EndFunc;}}}
 
 Func Offset2($row1, $col1, $row2, $col2);{{{
-	Local $r[2][2] = [[$row1, $col1], [$row2, $col2]]
+	Local $r[2] = [Pair($row1, $col1), Pair($row2, $col2)]
 	return $r
+EndFunc;}}}
+
+; Generate all possible global points for item based on relative offset inside chaos set
+Func MakeOffsets($rel);{{{
+	Local $result
+	For $set = 0 To 15
+		Local $i
+		Local $base_row = Floor($set / 4) * 5
+		Local $base_col = Mod($set, 4) * 6
+		For $i = 0 To UBound($rel) - 1
+			Local $pos = $rel[$i]
+			Local $val[2] = [$pos[0] + $base_row, $pos[1] + $base_col]
+			Array_Push($result, $val)
+		Next
+	Next
+	Return $result
 EndFunc;}}}
 
 ; Return array of possible relative offsets (rowOff, colOff for this item inside chaos set)
 Func CalcOffset($iclass, $h, $w);{{{
+	Local $bizha_max = 20
 	If $iclass == $I_HELMET Then
-		Return Offset1(0, 0)
+		Return MakeOffsets(Offset1(0, 0))
 	ElseIf $iclass == $I_GLOVES Then
-		Return Offset1(2, 0)
+		Return MakeOffsets(Offset1(2, 0))
 	ElseIf $iclass == $I_BELT Then
-		Return Offset1(4, 0)
+		Return MakeOffsets(Offset1(4, 0))
 	ElseIf $iclass == $I_BODY Then
-		Return Offset1(0, 2)
+		Return MakeOffsets(Offset1(0, 2))
 	ElseIf $iclass == $I_BOOTS Then
-		Return Offset1(3, 2)
+		Return MakeOffsets(Offset1(3, 2))
 	ElseIf $iclass == $I_WEAPON_2H Then
-		Return Offset1(0, 4)
+		Return MakeOffsets(Offset1(0, 4))
 	ElseIf $iclass == $I_WEAPON_1H and $h == 3 and $w == 1 Then
-		Return Offset2(0, 4, 0, 5)
+		Return MakeOffsets(Offset2(0, 4, 0, 5))
 	ElseIf $iclass == $I_WEAPON_1H and $h == 2 and $w == 2 Then
-		Return Offset2(0, 4, 2, 4)
+		Return MakeOffsets(Offset2(0, 4, 2, 4))
+	ElseIf $iclass == $I_AMULET Then
+		Local $pos[$bizha_max]
+		For $i = 1 To $bizha_max
+			$pos[$i - 1] = Pair(21, 24 - $i)
+		Next
+		Return $pos
+	ElseIf $iclass == $I_RING Then
+		Local $pos[$bizha_max * 2]
+		For $i = 1 To $bizha_max
+			$pos[($i - 1) * 2] = Pair(22, 24 - $i)
+			$pos[($i - 1) * 2 + 1] = Pair(23, 24 - $i)
+		Next
+		Return $pos
 	EndIf
 	Local $r
 	Return $r
 EndFunc;}}}
 
 
-Global $qtab = MakeArea(24, 24, "?")
-
-Func Item2a($info)
-	return $info[$II_CLASS] & ":" & $info[$II_HEIGHT] & "x" & $info[$II_WIDTH]
-EndFunc
-
-Func QLook($row, $col, $mark)
-	Local $what = $qtab[$row][$col]
-	if $what == "?" then
-		Local $info = QtabProbe($row, $col)
-		if $info[$II_CLASS] <> $I_NONE then
-			$what = Item2a($info)
-			MarkInv($qtab, $row, $col, $info[$II_HEIGHT], $info[$II_WIDTH], $mark)
-		else
-			$what = ""
-			MarkInv($qtab, $row, $col, 1, 1, "")
-		endif
-	endif
-	return $what
-EndFunc
-
 ; Move chaos set item to unoccupied cell of inventory
-Func MoveChaosSetItem($irow, $icol, $coff, $info); {{{
+Func MoveChaosSetItem(ByRef $qtab, $irow, $icol, $coff, $info); {{{
 	Local $mark, $w, $h, $i, $base_col, $base_row
 	$h = $info[$II_HEIGHT]
 	$w = $info[$II_WIDTH]
 	$mark = Item2a($info)
-	for $set = 0 to 15
-		Local $i, $what
-		$base_row = Floor($set / 4) * 5
-		$base_col = Mod($set, 4) * 6
-		; look at first position
-		$row = $base_row + $coff[0][0]
-		$col = $base_col + $coff[0][1]
-		$what = QLook($row, $col, $mark)
-		; try to fallback to second position
-		if $what <> "" and $what == $mark and UBound($coff) > 1 then
-			ConsoleWrite("Trying next index " & UBound($coff) & @LF)
-			Local $k
-			For $k = 1 to UBound($coff) - 1
-				$row = $base_row + $coff[$k][0]
-				$col = $base_col + $coff[$k][1]
-				$what = QLook($row, $col, $mark)
-				if $what == "" Then
-					ExitLoop
-				EndIf
-			Next
-		endif
-		if $what == "" then
+	For $i = 0 To UBound($coff) - 1
+		Local $pos = $coff[$i]
+		Local $row = $pos[0], $col = $pos[1]
+		Local $what = Qtab_look($qtab, $row, $col)
+		If $what[$II_CLASS] == $I_NONE Then
 			ConsoleWrite("   -> " & $row & "," & $col & @LF)
-			MarkInv($qtab, $row, $col, $h, $w, $mark)
+			Qtab_update($qtab, $row, $col, $info)
 			Inventory2Qtab($irow, $icol, $row, $col, $h, $w)
 			;MouseMove(InventoryX($icol), InventoryY($irow), 0)
 			;MouseMove(QtabX($col), QtabY($row), 10)
 			;Sleep(200)
 			ExitLoop
-		endif
-	next
-	;MouseMove(QtabX($coff[0][1]), QtabY($coff[0][0]))
-	;;Sleep(200)
+		EndIf
+	Next
 EndFunc;}}}
 
 ; Issue large number of ctrl-clicks
@@ -583,8 +323,9 @@ Func PushIfClass(ByRef $items, $iref, $iclass, $min_quality = 0)
 EndFunc
 
 Func ProcessInventory();{{{
-	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, $fossils, $resonators, $essenses, $gems, $bizsha
+	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, $fossils, $resonators, $essenses, $gems
 	Local $seen = MakeArea(5, 12, False) ; what cells we're aware about
+	Local $qtab = Qtab_new()
 	Local $i, $item, $row, $col
 	
 	; Look throught inventory for currency, maps, chaos items etc
@@ -634,7 +375,7 @@ Func ProcessInventory();{{{
 			$item = TItemRef_item($chaosItems[$i])
 			Local $off = CalcOffset($item[$II_CLASS], $item[$II_HEIGHT], $item[$II_WIDTH])
 			If IsArray($off) Then
-				MoveChaosSetItem($row, $col, $off, $item)
+				MoveChaosSetItem($qtab, $row, $col, $off, $item)
 			EndIf
 		Next
 	EndIf
@@ -679,8 +420,8 @@ Func StopScript()
 EndFunc
 
 ConsoleWrite("OTHER => " & $I_OTHER & @LF)
-;ProcessInventory()
-;Exit(0)
+ProcessInventory()
+Exit(0)
 
 Func RestartScript()
 	Local $editor = "[CLASS:SciTEWindow]"
