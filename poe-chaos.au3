@@ -420,8 +420,8 @@ Func StopScript()
 EndFunc
 
 ConsoleWrite("OTHER => " & $I_OTHER & @LF)
-ProcessInventory()
-Exit(0)
+;ProcessInventory()
+;Exit(0)
 
 Func RestartScript()
 	Local $editor = "[CLASS:SciTEWindow]"
