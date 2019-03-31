@@ -22,7 +22,7 @@ WinWaitActive($wcl)
 ;Sleep(2000)
 
 
-Global $inventory_top_x = 880, $inventory_top_y = 653, $cell_size = 58
+;Global $inventory_top_x = 880, $inventory_top_y = 653, $cell_size = 58
 Global _
 	$tablist_button_x = 710, _
 	$tablist_button_y = 162, _
@@ -36,6 +36,12 @@ Global _
 	$stash_bottom_y = 884, _
 	$stash_qcell = 29, _
 	$stash_cell = $stash_qcell * 2
+
+Global _
+	$inventory_top_x = 881, _
+	$inventory_top_y = 654, _
+	$inventory_bottom_x = 1585, _
+	$inventory_bottom_y = 950
 
 Enum $TAB_CURRENCY = 0, _
 	$TAB_MAPS = 1, _
@@ -56,11 +62,13 @@ Func SplitNL($text) ;{{{
 EndFunc ;}}}
 
 Func InventoryX($col) ;{{{
-	Return $inventory_top_x + $cell_size * $col
+	Return $col / 12 * ($inventory_bottom_x - $inventory_top_x) + $inventory_top_x
+	;Return $inventory_top_x + $cell_size * $col
 EndFunc ;}}}
 
 Func InventoryY($row) ;{{{
-	Return $inventory_top_y + $cell_size * $row
+	Return $row / 5 * ($inventory_bottom_y - $inventory_top_y) + $inventory_top_y
+	;Return $inventory_top_y + $cell_size * $row
 EndFunc ;}}}
 
 ; Calculate position in quad tab
@@ -240,7 +248,7 @@ EndFunc;}}}
 
 ; Return array of possible relative offsets (rowOff, colOff for this item inside chaos set)
 Func CalcOffset($iclass, $h, $w);{{{
-	Local $bizha_max = 20
+	Local $bizha_max = 22
 	If $iclass == $I_HELMET Then
 		Return MakeOffsets(Offset1(0, 0))
 	ElseIf $iclass == $I_GLOVES Then
@@ -414,13 +422,52 @@ EndFunc;}}}
 ;	ConsoleWrite(Floor(5 / 4) & @LF)
 ;EndIf
 
+Func SwapFn($x1, $y1, $x2, $y2)
+	Local $dly = 100
+	Local $spd = 0
+	MouseMove($x1, $y1, $spd)
+	Sleep($dly)
+	MouseClick("left")
+	Sleep($dly)
+	MouseMove($x2, $y2, $spd)
+	Sleep($dly)
+	MouseClick("left")
+	Sleep($dly)
+	MouseMove($x1, $y1, $spd)
+	Sleep($dly)
+	MouseClick("left")
+	Sleep($dly)
+EndFunc
+
+Func SwapGemSkills()
+	Local $path[5][2] = [[0, 1], [0, 0], [1, 0], [2, 0], [2, 1]]
+	Local $base_row = 0
+	Local $base_col = 10
+	Local $ammu_left = 1200
+	Local $ammu_top = 280
+	Local $ammu_right = 1260
+	Local $ammu_bot = 400
+	Local $ammu_w = 2 - 1
+	Local $ammu_h = 3 - 1
+	Sleep(250)
+	Send("{CTRLUP}")
+	Sleep(100)
+	For $i = 0 to UBound($path) - 1
+		Local $x1 = InventoryX($base_col + $path[$i][1])
+		Local $y1 = InventoryY($base_row + $path[$i][0])
+		Local $x2 = $ammu_left + ($ammu_right - $ammu_left) * $path[$i][1] / $ammu_w
+		Local $y2 = $ammu_top + ($ammu_bot - $ammu_top) * $path[$i][0] / $ammu_h
+		SwapFn($x1, $y1, $x2, $y2)
+	Next
+EndFunc
+
 Func StopScript()
 	WinActivate("[CLASS:Vim]")
 	Exit(0)
 EndFunc
 
 ConsoleWrite("OTHER => " & $I_OTHER & @LF)
-;ProcessInventory()
+;SwapGemSkills()
 ;Exit(0)
 
 Func RestartScript()
@@ -437,6 +484,7 @@ EndFunc
 
 Func Daemonize()
 	HotKeySet("^{NUMPAD1}", "hk_ProcessInventory")
+	HotKeySet("^{NUMPAD5}", "SwapGemSkills")
 	HotKeySet("^{NUMPAD0}", "StopScript")
 	HotKeySet("^{NUMPADDOT}", "RestartScript")
 
