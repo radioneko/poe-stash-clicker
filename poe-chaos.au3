@@ -117,8 +117,8 @@ Func OpenTab($no) ;{{{
 	Sleep(50)
 	MouseClick("left")
 	Sleep(50)
-	MouseMove($tablist_menu_x, $tablist_button_y + $no * $tablist_item_height, 0)
-	Sleep(50)
+	MouseMove($tablist_menu_x, $tablist_button_y + $no * $tablist_item_height, 8)
+	Sleep(80)
 	MouseClick("left")
 	Sleep(300)
 EndFunc ;}}};}}}
