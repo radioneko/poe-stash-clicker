@@ -461,14 +461,97 @@ Func SwapGemSkills()
 	Next
 EndFunc
 
+
+Func GetAffixes($desc)
+	local $sec = StringSplit($desc, @CR & @LF & "--------" & @CR & @LF, 1)
+	local $affixes = SplitNL($sec[7])
+	local $j = 0
+	for $i = 1 to UBound($affixes) - 1
+		if $affixes[$i] <> "" then
+			$affixes[$j] = $affixes[$i]
+			$j = $j + 1
+		endif
+	next
+	ReDim $affixes[$j]
+	return $affixes
+EndFunc
+
+
+Func BenchApply($loc)
+	local $bench[2] = [379, 582]
+	MouseClick("right", $loc[0], $loc[1], 1, 3)
+	Sleep(100)
+	MouseClick("left", $bench[0], $bench[1], 1, 3)
+	Sleep(100)
+EndFunc
+
+
+; Apply alteration or augmentation orb based
+; on how many affixes item already have
+Func AltOrAug();{{{
+	local $alt[2] = [130, 374]
+	local $aug[2] = [261, 431]
+	local $bench[2] = [379, 582]
+	local $dly = 25
+	MouseMove($bench[0], $bench[1], 0)
+	Sleep($dly)
+	Send("^c")
+	Sleep($dly)
+
+	local $affixes = GetAffixes(ClipGet())
+	local $naffixes = UBound($affixes)
+		ConsoleWrite("naffix = " & $naffixes & @LF)
+		for $i = 0 to $naffixes - 1
+			ConsoleWrite("<" & $affixes[$i] & ">" & @LF)
+		next
+	if $naffixes == 1 then
+		BenchApply($aug)
+		ConsoleWrite("AUG" & @LF)
+	elseif $naffixes > 1 then
+		BenchApply($alt)
+		ConsoleWrite("alt" & @LF)
+	else
+	endif
+EndFunc;}}}
+
+Enum $GRID_min = 0, $GRID_max = 1, $GRID_n = 2
+Func ToGrid($i, $g)
+	Return $g[$GRID_Min] + ($g[$GRID_max] - $g[$GRID_min]) * $i / $g[$GRID_n]
+EndFunc
+
+Func DoOneAura($row, $col)
+	local $grid_x[3] = [1074, 1224, 2]
+	local $grid_y[3] = [640,  1000, 5]
+	local $panel[2] = [1314, 1162]
+	local $dly = 150
+	
+	MouseClick("left", $panel[0], $panel[1], 1, 5)
+	Sleep($dly)
+	MouseClick("left", ToGrid($col, $grid_x), ToGrid($row, $grid_y), 1, 5)
+	Sleep($dly)
+	Send("w")
+	Sleep($dly)
+EndFunc
+
+; Cast auras on my ll nearly-always-dead character
+Func EnableAuras();{{{
+	DoOneAura(0, 1)
+	DoOneAura(1, 1)
+	DoOneAura(2, 0)
+	DoOneAura(2, 2)
+	DoOneAura(3, 1)
+	DoOneAura(5, 0)
+	; Clear slot
+	DoOneAura(5, 2)
+EndFunc;}}}
+
+
 Func StopScript()
 	WinActivate("[CLASS:Vim]")
 	Exit(0)
 EndFunc
 
 ConsoleWrite("OTHER => " & $I_OTHER & @LF)
-;SwapGemSkills()
-;Exit(0)
 
 Func RestartScript()
 	Local $editor = "[CLASS:SciTEWindow]"
@@ -484,7 +567,8 @@ EndFunc
 
 Func Daemonize()
 	HotKeySet("^{NUMPAD1}", "hk_ProcessInventory")
-	HotKeySet("^{NUMPAD5}", "SwapGemSkills")
+	HotKeySet("^{NUMPAD5}", "AltOrAug")
+	HotKeySet("^{NUMPAD9}", "EnableAuras")
 	HotKeySet("^{NUMPAD0}", "StopScript")
 	HotKeySet("^{NUMPADDOT}", "RestartScript")
 
