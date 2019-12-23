@@ -31,7 +31,7 @@ Func DescribeBaseItem(ByRef $info) ;{{{
 	EndIf
 	Local $words = StringSplit($text, " ")
 	Local $w = $words[$words[0]]
-	ConsoleWrite("Checking '" & $text & "'..." & @LF)
+	;ConsoleWrite("Checking '" & $text & "'..." & @LF)
 
 	; Fragments: atziri etc {{{
 	; Fragments MUST be checked before currency because splinters have rarity currency

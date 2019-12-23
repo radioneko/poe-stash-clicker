@@ -9,6 +9,7 @@
 #ce ----------------------------------------------------------------------------
 
 ; Script Start - Add your code below here
+#include "config.au3"
 #include "util.au3"
 #include <GUIConstantsEx.au3>
 
@@ -23,35 +24,6 @@ WinWaitActive($wcl)
 
 
 ;Global $inventory_top_x = 880, $inventory_top_y = 653, $cell_size = 58
-Global _
-	$tablist_button_x = 710, _
-	$tablist_button_y = 162, _
-	$tablist_menu_x = 770, _
-	$tablist_item_height = 24
-
-Global _
-	$stash_top_x = 19, _
-	$stash_top_y = 180, _
-	$stash_bottom_x = 724, _
-	$stash_bottom_y = 884, _
-	$stash_qcell = 29, _
-	$stash_cell = $stash_qcell * 2
-
-Global _
-	$inventory_top_x = 881, _
-	$inventory_top_y = 654, _
-	$inventory_bottom_x = 1585, _
-	$inventory_bottom_y = 950
-
-Enum $TAB_CURRENCY = 0, _
-	$TAB_MAPS = 1, _
-	$TAB_DIVINATION = 2, _
-	$TAB_CHAOS = 3, _
-	$TAB_ESSENCE = 5, _
-	$TAB_FRAGMENTS = 16, _
-	$TAB_RESONATORS = 23 - 2, _
-	$TAB_FOSSILS = 12, _
-	$TAB_GEMS = 11
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;     "STRUCTURES"     ;;
@@ -100,7 +72,9 @@ EndFunc;}}}
 Func CtrlClick($x, $y) ;{{{
 	Send("{CTRLDOWN}")
 	Sleep(10)
-	MouseMove($x, $y, 0)
+	if $x >= 0 and $y >= 0 then
+		MouseMove($x, $y, 0)
+	endif
 	Sleep(20)
 	MouseClick("left")
 	Sleep(10)
@@ -159,17 +133,6 @@ Func MarkInv(ByRef $map, $row, $col, $h, $w, $value) ;{{{
 	Next
 EndFunc ;}}}
 
-Func MakeArea($rows, $cols, $value);{{{
-	Local $a[$rows][$cols]
-	for $i = 0 to $rows - 1
-		for $j = 0 to $cols - 1
-			$a[$i][$j] = $value
-		next
-	next
-	return $a
-EndFunc;}}}
-
-
 ; Get raw item description by moving mouse pointer and issuing "Ctrl-C".
 ; Returns II_ (aka TItemInfo)
 Func ProbeItem($x, $y) ;{{{
@@ -196,11 +159,12 @@ Func ProbeItem($x, $y) ;{{{
 		$info[$ITEM_quality], $info[$ITEM_base])
 EndFunc ;}}}
 
-
 ; Convenience wrapper to probe item in inventory
 Func InventoryProbe($row, $col);{{{
 	Return ProbeItem(InventoryX($col) + 8, InventoryY($row) + 8)
 EndFunc;}}}
+
+#include "storage.au3"
 
 Func PartOfChaosSet(ByRef $item) ;{{{
 	ConsoleWrite("item: " & $item[1] & "; " & $item[2] & "; " & $item[3] & @LF)
@@ -461,10 +425,22 @@ Func SwapGemSkills()
 	Next
 EndFunc
 
+Func ArrPrint($a)
+	for $i = 0 to UBound($a) - 1
+		ConsoleWrite("[ " & $i & "] => <" & $a[$i] & ">" & @LF)
+	next
+EndFunc
 
-Func GetAffixes($desc)
+Func GetAffixes($desc);{{{
 	local $sec = StringSplit($desc, @CR & @LF & "--------" & @CR & @LF, 1)
-	local $affixes = SplitNL($sec[7])
+	local $affixes
+	; Affixes are after item level (i think)
+	for $i = 0 to UBound($sec) - 1
+		if StringLeft($sec[$i], 11) == "Item Level:" then
+			$affixes = SplitNL($sec[$i + 1])
+			ExitLoop
+		endif
+	next
 	local $j = 0
 	for $i = 1 to UBound($affixes) - 1
 		if $affixes[$i] <> "" then
@@ -474,7 +450,7 @@ Func GetAffixes($desc)
 	next
 	ReDim $affixes[$j]
 	return $affixes
-EndFunc
+EndFunc;}}}
 
 
 Func BenchApply($loc)
@@ -498,28 +474,49 @@ Func AltOrAug();{{{
 	Send("^c")
 	Sleep($dly)
 
-	local $affixes = GetAffixes(ClipGet())
-	local $naffixes = UBound($affixes)
-		ConsoleWrite("naffix = " & $naffixes & @LF)
-		for $i = 0 to $naffixes - 1
-			ConsoleWrite("<" & $affixes[$i] & ">" & @LF)
-		next
+	local $desc = StringSplit(ClipGet(), @CR & @LF, 1)
+	local $pos = FindFractured($desc)
+	if $pos == -1 then
+		return
+	endif
+	;ArrPrint($desc)
+	;ConsoleWrite("POS = " & $pos & @CR)
+	local $naffixes
+	if StringLeft($desc[$pos + 1], 2) == "--" then
+		$naffixes = 1
+	else
+		$naffixes = 2
+	endif
+;	local $affixes = GetAffixes(ClipGet())
+;	local $naffixes = UBound($affixes)
+;		ConsoleWrite("naffix = " & $naffixes & @LF)
+;		for $i = 0 to $naffixes - 1
+;			ConsoleWrite("<" & $affixes[$i] & ">" & @LF)
+;		next
 	if $naffixes == 1 then
 		BenchApply($aug)
 		ConsoleWrite("AUG" & @LF)
-	elseif $naffixes > 1 then
+	elseif $naffixes == 2 then
 		BenchApply($alt)
 		ConsoleWrite("alt" & @LF)
-	else
 	endif
 EndFunc;}}}
 
-Enum $GRID_min = 0, $GRID_max = 1, $GRID_n = 2
-Func ToGrid($i, $g)
-	Return $g[$GRID_Min] + ($g[$GRID_max] - $g[$GRID_min]) * $i / $g[$GRID_n]
-EndFunc
+Func ApplyAlt();{{{
+	if WinActive($wcl) then
+		local $alt[2] = [130, 374]
+		BenchApply($alt)
+	endif
+EndFunc;}}}
 
-Func DoOneAura($row, $col)
+Func ApplyAug();{{{
+	if WinActive($wcl) then
+		local $aug[2] = [261, 431]
+		BenchApply($aug)
+	endif
+EndFunc;}}}
+
+Func DoOneAura($row, $col);{{{
 	local $grid_x[3] = [1074, 1224, 2]
 	local $grid_y[3] = [640,  1000, 5]
 	local $panel[2] = [1314, 1162]
@@ -531,7 +528,7 @@ Func DoOneAura($row, $col)
 	Sleep($dly)
 	Send("w")
 	Sleep($dly)
-EndFunc
+EndFunc;}}}
 
 ; Cast auras on my ll nearly-always-dead character
 Func EnableAuras();{{{
@@ -545,6 +542,38 @@ Func EnableAuras();{{{
 	DoOneAura(5, 2)
 EndFunc;}}}
 
+
+; Scan tab for gems
+Func DoGems()
+	local $grid = $grid_stash
+	local $seen = MakeArea(12, 12, False)
+	local $count = 0
+	for $row = 0 to 11
+		for $col = 0 to 11
+			if $seen[$row][$col] then
+				ContinueLoop
+			endif
+
+			$item = ProbeItem(GridX($grid, $col), GridY($grid, $row))
+			if $item[$II_CLASS] == $I_NONE then
+				ContinueLoop
+			endif
+			MarkInv($seen, $row, $col, $item[$II_HEIGHT], $item[$II_WIDTH], True)
+			if $item[$II_CLASS] <> $I_GEM then
+				ContinueLoop
+			endif
+
+			if $item[$II_QUALITY] < 10 then
+				CtrlClick(-1, -1)
+				$count = $count + 1
+				if $count >= 5 * 8 then
+					ExitLoop 2
+				endif
+			endif
+		next
+	next
+
+EndFunc
 
 Func StopScript()
 	WinActivate("[CLASS:Vim]")
@@ -567,8 +596,12 @@ EndFunc
 
 Func Daemonize()
 	HotKeySet("^{NUMPAD1}", "hk_ProcessInventory")
-	HotKeySet("^{NUMPAD5}", "AltOrAug")
+	HotKeySet("^{NUMPAD2}", "DoGems")
+	;HotKeySet("^{NUMPAD5}", "AltOrAug")
+	HotKeySet("^{NUMPAD4}", "ApplyAlt")
+	HotKeySet("^{NUMPAD5}", "ApplyAug")
 	HotKeySet("^{NUMPAD9}", "EnableAuras")
+
 	HotKeySet("^{NUMPAD0}", "StopScript")
 	HotKeySet("^{NUMPADDOT}", "RestartScript")
 
