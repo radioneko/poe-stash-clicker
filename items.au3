@@ -37,6 +37,8 @@ Func DescribeBaseItem(ByRef $info) ;{{{
 	; Fragments MUST be checked before currency because splinters have rarity currency
 	If StringLeft($text, 13) == "Sacrifice at " or _
 	   StringLeft($text, 12) == "Splinter of " or _
+	   (StringLeft($text, 9) == "Timeless " and StringRight($text, 9) == " Splinter") or _
+	   StringRight($text, 7) == " Scarab" or _
 	   $text == "Offering to the Goddess" _
 	Then
 		Return Tuple3($I_FRAGMENT, 1, 1)
