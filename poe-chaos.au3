@@ -59,27 +59,27 @@ EndFunc ;}}}
 Func ItemMove($srcX, $srcY, $dstX, $dstY);{{{
 	;MouseClick("left", $srcX, $srcY)
 	MouseMove($srcX, $srcY, 0)
-	Sleep(50)
+	Sleep($delay_basic)
 	MouseClick("left")
-	Sleep(50)
+	Sleep($delay_basic)
 	;MouseClick("left", $dstX, $dstY)
 	MouseMove($dstX, $dstY, 0)
-	Sleep(50)
+	Sleep($delay_basic)
 	MouseClick("left")
-	Sleep(50)
+	Sleep($delay_basic)
 EndFunc;}}}
 
 Func CtrlClick($x, $y) ;{{{
 	Send("{CTRLDOWN}")
-	Sleep(10)
+	Sleep($delay_ctrl)
 	if $x >= 0 and $y >= 0 then
 		MouseMove($x, $y, 0)
 	endif
 	Sleep(20)
 	MouseClick("left")
-	Sleep(10)
+	Sleep($delay_ctrl)
 	Send("{CTRLUP}")
-	Sleep(10)
+	Sleep($delay_ctrl)
 EndFunc ;}}}
 
 Func InventoryCtrlClick($row, $col);{{{
@@ -88,9 +88,9 @@ EndFunc;}}}
 
 Func OpenTab($no) ;{{{
 	MouseMove($tablist_button_x, $tablist_button_y, 0)
-	Sleep(50)
+	Sleep($delay_basic)
 	MouseClick("left")
-	Sleep(50)
+	Sleep($delay_basic)
 	MouseMove($tablist_menu_x, $tablist_button_y + $no * $tablist_item_height, 8)
 	Sleep(80)
 	MouseClick("left")
@@ -138,9 +138,9 @@ EndFunc ;}}}
 Func ProbeItem($x, $y) ;{{{
 	ClipPut("")
 	MouseMove($x, $y, 1)
-	Sleep(20)
+	Sleep($delay_probe)
 	Send("^c")
-	Sleep(20)
+	Sleep($delay_probe)
 	$text = ClipGet()
 	;ConsoleWrite("'" & $text & "'" & @LF)	
 	If $text == "" Then
