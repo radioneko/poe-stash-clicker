@@ -44,7 +44,7 @@ Func DescribeBaseItem(ByRef $info) ;{{{
 		Return Tuple3($I_FRAGMENT, 1, 1)
 	EndIf
 	If $text == "Divine Vessel" Then
-		Return Tuple3($I_FRAGMENT, 2, 1)
+		Return Tuple3($I_FRAGMENT, 1, 1)
 	EndIf
 	; }}}
 	; Delve stuff {{{
