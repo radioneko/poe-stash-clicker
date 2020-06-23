@@ -90,6 +90,8 @@ Func OpenTab($no) ;{{{
 	MouseMove($tablist_button_x, $tablist_button_y, 0)
 	Sleep($delay_basic)
 	MouseClick("left")
+	Sleep($delay_basic * 2)
+	Send("{UP}")
 	Sleep($delay_basic)
 	MouseMove($tablist_menu_x, $tablist_button_y + $no * $tablist_item_height, 8)
 	Sleep(80)
@@ -119,6 +121,9 @@ Func ClassifyCurrency(ByRef $info, $base, $words);{{{
 	ConsoleWrite(">>> " & $base & StringRegExp($base, ".*Essence of.*") & @LF)
 	If UBound($words) > 1 and (StringRegExp($base, "Essence of") == 1 or $base == "Remnant of Corruption") Then
 		Return Tuple3($I_ESSENCE, 1, 1)
+	EndIf
+	If StringRegExp($base, ".* Oil$") == 1 Then
+		Return Tuple3($I_OIL, 1, 1)
 	EndIf
 	Return Tuple3($I_CURRENCY, 1, 1)
 EndFunc;}}}
@@ -295,7 +300,7 @@ Func PushIfClass(ByRef $items, $iref, $iclass, $min_quality = 0)
 EndFunc
 
 Func ProcessInventory();{{{
-	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, $fossils, $resonators, $essenses, $gems
+	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, $fossils, $resonators, $essenses, $gems, $oils
 	Local $seen = MakeArea(5, 12, False) ; what cells we're aware about
 	Local $qtab = Qtab_new()
 	Local $i, $item, $row, $col
@@ -333,6 +338,7 @@ Func ProcessInventory();{{{
 			PushIfClass($resonators, $iref, $I_RESONATOR)
 			PushIfClass($essenses, $iref, $I_ESSENCE)
 			PushIfClass($gems, $iref, $I_GEM, 1)
+			PushIfClass($oils, $iref, $I_OIL)
 		next
 	next
 
@@ -361,6 +367,7 @@ Func ProcessInventory();{{{
 	MassCtrlClick($resonators, $TAB_RESONATORS, 500, 50)
 	MassCtrlClick($essenses, $TAB_ESSENCE, 500, 50)
 	MassCtrlClick($gems, $TAB_GEMS, 500, 50)
+	MassCtrlClick($oils, $TAB_OIL, 500, 50)
 EndFunc;}}}
 
 ;OpenTab(3)
@@ -504,14 +511,14 @@ EndFunc;}}}
 
 Func ApplyAlt();{{{
 	if WinActive($wcl) then
-		local $alt[2] = [130, 374]
+		local $alt[2] = [126, 321]
 		BenchApply($alt)
 	endif
 EndFunc;}}}
 
 Func ApplyAug();{{{
 	if WinActive($wcl) then
-		local $aug[2] = [261, 431]
+		local $aug[2] = [252, 389]
 		BenchApply($aug)
 	endif
 EndFunc;}}}
@@ -563,7 +570,7 @@ Func DoGems()
 				ContinueLoop
 			endif
 
-			if $item[$II_QUALITY] < 10 then
+			if $item[$II_QUALITY] < 15 and $item[$II_QUALITY] > 0 then
 				CtrlClick(-1, -1)
 				$count = $count + 1
 				if $count >= 5 * 8 then

@@ -3,7 +3,7 @@ Enum $ITEM_is_valid = 0, $ITEM_rarity = 1, $ITEM_is_undefined = 2, $ITEM_sockets
 
 ; item classes
 Enum $I_NONE, $I_HELMET, $I_BODY, $I_GLOVES, $I_BELT, $I_BOOTS, $I_WEAPON_2H, $I_WEAPON_1H, $I_RING, $I_AMULET, _
-	$I_CURRENCY, $I_MAP, $I_DIVINATION, $I_FRAGMENT, $I_FOSSIL, $I_RESONATOR, $I_ESSENCE, $I_GEM, $I_OTHER
+	$I_CURRENCY, $I_MAP, $I_DIVINATION, $I_FRAGMENT, $I_FOSSIL, $I_RESONATOR, $I_ESSENCE, $I_GEM, $I_OIL, $I_OTHER
 
 ; ItemInfo "structure"
 Enum $II_CLASS = 0, $II_HEIGHT = 1, $II_WIDTH = 2, $II_SOCKETS = 3, $II_LVL = 4, $II_CHAOS = 5, $II_QUALITY = 6, $II_BASE = 7
