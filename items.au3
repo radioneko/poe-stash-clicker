@@ -24,6 +24,10 @@ EndFunc;}}}
 Func DescribeBaseItem(ByRef $info) ;{{{
 	Local $desc = $info[$ITEM_base]
 	Local $text
+
+	; TEMP (Harvest League)
+	;if StringRight($desc,
+
 	If StringLeft($desc, 9) == "Superior " Then
 		$text = StringMid($desc, 10)
 	Else
@@ -63,7 +67,12 @@ Func DescribeBaseItem(ByRef $info) ;{{{
 	;}}}
 
 	If $w == "Map" Then
-		Return Tuple3($I_MAP, 1, 1)
+		; Dirty hack for blight tab
+		if StringRegExp($desc, ".*Blighted.*") == 1 Then
+			Return Tuple3($I_OIL, 1, 1)
+		Else
+			Return Tuple3($I_MAP, 1, 1)
+		EndIf
 	EndIf
 	If $info[$ITEM_rarity] == "Currency" Then
 		Return ClassifyCurrency($info, $text, $words)

@@ -125,6 +125,13 @@ Func ClassifyCurrency(ByRef $info, $base, $words);{{{
 	If StringRegExp($base, ".* Oil$") == 1 Then
 		Return Tuple3($I_OIL, 1, 1)
 	EndIf
+	; Harvest league
+	if StringRegExp($base, ".*Seed$") == 1 or StringRegExp($base, ".*Grain$") == 1 _
+			or StringRegExp($base, ".*Bulb$") == 1 or StringRegExp($base, ".*Blisterfruit") == 1 _
+			or $base == "Storage Tank" or $base == "Pylon" _
+		Then
+		Return Tuple3($I_OTHER, 1, 1)
+	EndIf
 	Return Tuple3($I_CURRENCY, 1, 1)
 EndFunc;}}}
 
