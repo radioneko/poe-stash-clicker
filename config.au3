@@ -41,7 +41,9 @@ Global _
 	$TAB_RESONATORS = reg_get("TAB_RESONATORS", 5), _
 	$TAB_FOSSILS = reg_get("TAB_FOSSILS", 5), _
 	$TAB_GEMS = reg_get("TAB_GEMS", 15), _
-	$TAB_OIL = reg_get("TAB_OILS", 13)
+	$TAB_OIL = reg_get("TAB_OILS", 13), _
+	$TAB_DELIRIUM = reg_get("TAB_DELIRIUM",  16), _
+	$TAB_METAMORPH = reg_get("TAB_METAMORPH", 17)
 
 Global _
 	$delay_basic = reg_get("delay_basic", 50), _

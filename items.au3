@@ -3,7 +3,8 @@ Enum $ITEM_is_valid = 0, $ITEM_rarity = 1, $ITEM_is_undefined = 2, $ITEM_sockets
 
 ; item classes
 Enum $I_NONE, $I_HELMET, $I_BODY, $I_GLOVES, $I_BELT, $I_BOOTS, $I_WEAPON_2H, $I_WEAPON_1H, $I_RING, $I_AMULET, _
-	$I_CURRENCY, $I_MAP, $I_DIVINATION, $I_FRAGMENT, $I_FOSSIL, $I_RESONATOR, $I_ESSENCE, $I_GEM, $I_OIL, $I_OTHER
+	$I_CURRENCY, $I_MAP, $I_DIVINATION, $I_FRAGMENT, $I_FOSSIL, $I_RESONATOR, $I_ESSENCE, $I_GEM, $I_OIL, _
+	$I_DELIRIUM, $I_METAMORPH, $I_OTHER
 
 ; ItemInfo "structure"
 Enum $II_CLASS = 0, $II_HEIGHT = 1, $II_WIDTH = 2, $II_SOCKETS = 3, $II_LVL = 4, $II_CHAOS = 5, $II_QUALITY = 6, $II_BASE = 7
@@ -14,6 +15,14 @@ Enum $ICLASS_class = 0, $ICLASS_height = 1, $ICLASS_width = 2
 ; II_ => String
 Func Item2a($info);{{{
 	return $info[$II_CLASS] & ":" & $info[$II_HEIGHT] & "x" & $info[$II_WIDTH]
+EndFunc;}}}
+
+Func IsMetamorphPart($w) ;{{{
+	If $w == "Brain" or $w == "Eye" or $w == "Lung" or $w == "Heart" or $w == "Liver" Then
+		Return 1
+	Else
+		Return 0
+	EndIf
 EndFunc;}}}
 
 ; Determine item class and dimensions from ITEM_xx structure
@@ -66,7 +75,7 @@ Func DescribeBaseItem(ByRef $info) ;{{{
 	EndIf
 	;}}}
 
-	If $w == "Map" Then
+	If $w == "Map" or ($words[0] >= 2 and $words[2] == "Map") Then
 		; Dirty hack for blight tab
 		if StringRegExp($desc, ".*Blighted.*") == 1 Then
 			Return Tuple3($I_OIL, 1, 1)
@@ -82,6 +91,11 @@ Func DescribeBaseItem(ByRef $info) ;{{{
 	EndIf
 	if $info[$ITEM_rarity] == "Gem" Then
 		Return Tuple3($I_GEM, 1, 1)
+	EndIf
+
+	; Metamorph
+	If $info[$ITEM_rarity] == "Unique" and IsMetamorphPart($w) == 1 Then
+		Return Tuple3($I_METAMORPH, 1, 1)
 	EndIf
 
 	; Helmets

@@ -125,6 +125,14 @@ Func ClassifyCurrency(ByRef $info, $base, $words);{{{
 	If StringRegExp($base, ".* Oil$") == 1 Then
 		Return Tuple3($I_OIL, 1, 1)
 	EndIf
+	; Metamorph league
+	if StringRegexp($base, ".*Catalyst$") == 1 Then
+		Return Tuple3($I_METAMORPH, 1, 1)
+	EndIf
+	; Delirium league
+	if $base == "Simulacrum Splinter" Then
+		Return Tuple3($I_DELIRIUM, 1, 1)
+	EndIf
 	; Harvest league
 	if StringRegExp($base, ".*Seed$") == 1 or StringRegExp($base, ".*Grain$") == 1 _
 			or StringRegExp($base, ".*Bulb$") == 1 or StringRegExp($base, ".*Blisterfruit") == 1 _
@@ -307,7 +315,8 @@ Func PushIfClass(ByRef $items, $iref, $iclass, $min_quality = 0)
 EndFunc
 
 Func ProcessInventory();{{{
-	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, $fossils, $resonators, $essenses, $gems, $oils
+	Local $chaosItems, $currencyItems, $mapItems, $divinationItems, $fragmentItems, _
+			$fossils, $resonators, $essenses, $gems, $oils, $delirium, $metamorph
 	Local $seen = MakeArea(5, 12, False) ; what cells we're aware about
 	Local $qtab = Qtab_new()
 	Local $i, $item, $row, $col
@@ -346,6 +355,8 @@ Func ProcessInventory();{{{
 			PushIfClass($essenses, $iref, $I_ESSENCE)
 			PushIfClass($gems, $iref, $I_GEM, 1)
 			PushIfClass($oils, $iref, $I_OIL)
+			PushIfClass($delirium, $iref, $I_DELIRIUM)
+			PushIfClass($metamorph, $iref, $I_METAMORPH)
 		next
 	next
 
@@ -375,6 +386,8 @@ Func ProcessInventory();{{{
 	MassCtrlClick($essenses, $TAB_ESSENCE, 500, 50)
 	MassCtrlClick($gems, $TAB_GEMS, 500, 50)
 	MassCtrlClick($oils, $TAB_OIL, 500, 50)
+	MassCtrlClick($delirium, $TAB_DELIRIUM, 500, 50)
+	MassCtrlClick($metamorph, $TAB_METAMORPH, 500, 50)
 EndFunc;}}}
 
 ;OpenTab(3)
